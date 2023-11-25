@@ -3,58 +3,43 @@ import cv2
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-
 FOLDER_PATH = "/Users/omama/Desktop/mrlEyes_2018_01/s0001"
+SEQUENCE_LENGTH = 5  # Length of the image sequences
 
 def extract_labels_from_filename(filename):
-    subject_id = int(filename[1:5])
-    image_id = int(filename[6:11])
-    gender = int(filename[12])
-    glasses = int(filename[14])
+    # Extract only the eye_state feature
     eye_state = int(filename[16])
-    reflections = int(filename[18])
-    lighting_conditions = int(filename[20])
-    sensor_id = int(filename[22:24])
+    return eye_state
 
-    return subject_id, image_id, gender, glasses, eye_state, reflections, lighting_conditions, sensor_id
+def create_sequences(X, y, sequence_length):
+    # Create sequences of images and labels
+    X_seq, y_seq = [], []
+    for i in range(len(X) - sequence_length + 1):
+        X_seq.append(X[i:i + sequence_length])
+        y_seq.append(y[i + sequence_length - 1])  # Use the label of the last image in the sequence
+    return np.array(X_seq), np.array(y_seq)
 
+# Lists to store image data and labels
+X, y = [], []
 
-
-
-# Iterate through all files in the folder
-for filename in os.listdir(FOLDER_PATH):
-
+# Iterate through all files in the folder and preprocess images
+for filename in sorted(os.listdir(FOLDER_PATH)):
     if os.path.isfile(os.path.join(FOLDER_PATH, filename)) and filename.endswith('.png'):
-        labels = extract_labels_from_filename(filename)
-        print(f"File: {filename}, Labels: {labels}")
-
-#eg File: s0001_01343_0_1_0_2_0_01.png, Labels: (1, 1343, 0, 1, 0, 2, 0, 1)
-
-
-# Lists to store image data (X) and labels (y)
-X = []
-y = []
-
-# Iterate through all files in the folder
-for filename in os.listdir(FOLDER_PATH):
-    if os.path.isfile(os.path.join(FOLDER_PATH, filename)) and filename.endswith('.png'):
-        # Load and preprocess the image
-        #img = cv2.imread(os.path.join(FOLDER_PATH, filename))
         img = cv2.imread(os.path.join(FOLDER_PATH, filename), cv2.IMREAD_GRAYSCALE)
-        img = cv2.resize(img, (32, 32))  # Adjust dimensions as needed
-        img = img / 255.0  # Normalize pixel values to be between 0 and 1
+        img = cv2.resize(img, (32, 32))  # Resize images
+        img = img / 255.0  # Normalize pixel values
 
-        # Extract labels
-        labels = extract_labels_from_filename(filename)
+        # Extract the eye_state label
+        label = extract_labels_from_filename(filename)
 
-        # Append data and labels to the lists
+        # Append data and label to the lists
         X.append(img)
-        y.append(labels)
+        y.append(label)
 
-# Convert lists to NumPy arrays
-X = np.array(X)
-y = np.array(y)
+# Create sequences of data
+X_seq, y_seq = create_sequences(X, y, SEQUENCE_LENGTH)
+
 # Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_seq, y_seq, test_size=0.2, random_state=42)
 
-print(X)
+print("Number of Sequences:", len(X_seq))
